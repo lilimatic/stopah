@@ -5,6 +5,12 @@ from sklearn.model_selection import train_test_split
 
 df = pd.read_csv('stopah.csv')
 
+for x in df.columns:
+        if len(df[df[x] == -2147483648].index) >0:
+            ix = df[df[x] == -2147483648].index
+            imp = df[[x]].loc[~df.index.isin(ix)].mean()[0]
+            df.loc[ix,x] = np.nan
+
 # Function that returns subset of interest 
 
 def dataset(df,subset,treatment,missing,split,size):
@@ -18,13 +24,8 @@ def dataset(df,subset,treatment,missing,split,size):
     #
     # --- Baseline ---
     #
-    
     #Make all funny values NA
-    for x in df.columns:
-        if len(df[df[x] == -2147483648].index) >0:
-            ix = df[df[x] == -2147483648].index
-            imp = df[[x]].loc[~df.index.isin(ix)].mean()[0]
-            df.loc[ix,x] = np.nan
+    
     
     baseline = ['Gender','Baseline_sepsis','Baseline_GIB','Age.at.randomisation..calc.','Weight','Max.grams.of.alcohol.drunk.per.day..calc.','Hepatic.Encephalopathy...Merged','Temperature...Merged','Pulse...Merged','Systolic.BP...Merged','Diastolic.BP...Merged','MAP','Hb...Merged','Platelets...Merged','WBC...Merged','Neutrophils...Merged','INR...Merged.clinical.and.calc','Bilirubin.Merged','ALT...Merged','ALP...Merged','Albumin...Merged','Sodium...Merged','Potassium...Merged','Urea...Merged','Creatinine...Merged','NLR_0','bDNA','Ferritin_ngml','Iron_mumoll','Transferrin','TSAT','PNPLA3_Add','PNPLA3_Rec','HPCT_NG'] 
     #
@@ -44,18 +45,18 @@ def dataset(df,subset,treatment,missing,split,size):
              'Bilirubin.Merged','Prothrombin.Time..patient....Merged','Bilirubin.day.7']
     ### Subset 
     if subset == 'Lille':
-        df = df[Lille_var+['Prednisolone','D28_DTH']]
+        df = df[Lille_var+['Prednisolone','D90_DTH']]
         
         df['Renal Insufficency'] = (df['Creatinine..mg.dL....Merged'].loc[:] > 1.3).astype('float')
         df = df.drop(['Creatinine..mg.dL....Merged'],axis=1)
         #df['Bilirubin.day.7'] = df['Bilirubin.day.7'] - df['Bilirubin.Merged']
          
     elif subset == '7day':
-        df = df[sevenday+['Prednisolone','D28_DTH']]
+        df = df[sevenday+['Prednisolone','D90_DTH']]
     elif subset == 'baseline':
-        df = df[baseline+['Prednisolone','D28_DTH']]
+        df = df[baseline+['Prednisolone','D90_DTH']]
     elif subset == 'full':
-        df = df[sevenday+baseline+['Prednisolone','D28_DTH']]
+        df = df[sevenday+baseline+['Prednisolone','D90_DTH']]
     
     #Treatment 
     if treatment == 'yes':
@@ -69,7 +70,7 @@ def dataset(df,subset,treatment,missing,split,size):
     
     df.reset_index(drop=True, inplace=True)
         
-    X, y = df.drop('D28_DTH', axis=1), df[['D28_DTH']]
+    X, y = df.drop('D90_DTH', axis=1), df[['D90_DTH']]
     
     
     #Split 
@@ -83,11 +84,11 @@ def dataset(df,subset,treatment,missing,split,size):
         train.reset_index()
         test.reset_index()
 
-        X_train = train.drop(['D28_DTH'],axis=1)
-        y_train = train['D28_DTH']
+        X_train = train.drop(['D90_DTH'],axis=1)
+        y_train = train['D90_DTH']
 
-        X_test = test.drop(['D28_DTH'],axis=1)
-        y_test = test['D28_DTH']
+        X_test = test.drop(['D90_DTH'],axis=1)
+        y_test = test['D90_DTH']
         
         
     return df, X, y, X_train, X_test, y_train, y_test
