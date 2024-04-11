@@ -7,13 +7,14 @@ from sklearn.model_selection import train_test_split
 
 
 
-def dataset(subset,death,treatment,split,size): #missing,
+def dataset(subset,death,treatment,split,size,missing): 
     #-df: Pandas data fame
     #-subset: String, determines subset 'Lille','7day','Baseline','Paper'
     #-death: Integer, 30 days or 90 days
     #-treatment: Integer, 1 if treated and else 0
     #-split: String, determines split 'train-test','mixed'
     #-testsize: Float, Size of test set 
+    #-missing: String, provides missingness mechanism
     #
     #Read data
     df = pd.read_csv('/Users/lilimatic/stopah.csv')
@@ -69,8 +70,8 @@ def dataset(subset,death,treatment,split,size): #missing,
     elif treatment == 99:
         df = df
         
-    #if missing == 'cc':
-     #   df = df.dropna()
+    if missing == 'cc':
+        df = df.dropna()
     
     df.reset_index(drop=True, inplace=True)
         
@@ -96,3 +97,4 @@ def dataset(subset,death,treatment,split,size): #missing,
         
         
     return df, X, y, X_train, X_test, y_train, y_test
+
