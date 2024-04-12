@@ -7,13 +7,14 @@ from sklearn.model_selection import train_test_split
 
 
 
-def dataset(subset,death,treatment,split,size): #missing,
+def dataset(subset,death,treatment,split,size,missing): 
     #-df: Pandas data fame
     #-subset: String, determines subset 'Lille','7day','Baseline','Paper'
     #-death: Integer, 30 days or 90 days
     #-treatment: Integer, 1 if treated and else 0
     #-split: String, determines split 'train-test','mixed'
     #-testsize: Float, Size of test set 
+    #-missing: String, provides missingness mechanism
     #
     #Read data
     df = pd.read_csv('/Users/lilimatic/stopah.csv')
@@ -69,8 +70,10 @@ def dataset(subset,death,treatment,split,size): #missing,
     elif treatment == 99:
         df = df
         
-    #if missing == 'cc':
-     #   df = df.dropna()
+    if missing == 'cc':
+        df = df.dropna()
+    else:
+        df =df
     
     df.reset_index(drop=True, inplace=True)
         
@@ -81,6 +84,8 @@ def dataset(subset,death,treatment,split,size): #missing,
     # Splits the data into a train-test set or an untreated train and treated test set 
     if split == 'train-test':
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=size, random_state=44)
+        
+       
     
     elif split == 'mixed':
         train = df.loc[df['Prednisolone']==0].drop(['Prednisolone'], axis=1)
@@ -93,6 +98,8 @@ def dataset(subset,death,treatment,split,size): #missing,
 
         X_test = test.drop([f'D{death}_DTH'],axis=1)
         y_test = test[f'D{death}_DTH']
-        
-        
+    
     return df, X, y, X_train, X_test, y_train, y_test
+    
+    
+

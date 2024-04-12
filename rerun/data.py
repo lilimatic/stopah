@@ -72,6 +72,8 @@ def dataset(subset,death,treatment,split,size,missing):
         
     if missing == 'cc':
         df = df.dropna()
+    else:
+        df =df
     
     df.reset_index(drop=True, inplace=True)
         
@@ -82,6 +84,7 @@ def dataset(subset,death,treatment,split,size,missing):
     # Splits the data into a train-test set or an untreated train and treated test set 
     if split == 'train-test':
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=size, random_state=44)
+        
     
     elif split == 'mixed':
         train = df.loc[df['Prednisolone']==0].drop(['Prednisolone'], axis=1)
@@ -94,7 +97,8 @@ def dataset(subset,death,treatment,split,size,missing):
 
         X_test = test.drop([f'D{death}_DTH'],axis=1)
         y_test = test[f'D{death}_DTH']
-        
-        
+    
     return df, X, y, X_train, X_test, y_train, y_test
+    
+    
 
