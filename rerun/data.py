@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 
-
+from sklearn.impute import SimpleImputer
 
 
 
@@ -18,6 +18,10 @@ def dataset(subset,death,treatment,split,size,missing):
     #
     #Read data
     df = pd.read_csv('/Users/lilimatic/stopah.csv')
+    
+    df['Hepatic.Encephalopathy...Treatment.Day.7..'] = df['Hepatic.Encephalopathy...Treatment.Day.7..'].astype('Int64')
+
+    df['Hepatic.Encephalopathy...Merged'] = df['Hepatic.Encephalopathy...Merged'].astype('Int64')
 
     #Treat values as NA
     for x in df.columns:
@@ -45,7 +49,11 @@ def dataset(subset,death,treatment,split,size,missing):
     #
     Lille_var = ['Age.at.randomisation..calc.','Albumin...Merged','Creatinine..mg.dL....Merged',
              'Bilirubin.Merged','Prothrombin.Time..patient....Merged','Bilirubin.day.7']
+    
+
+    
     ### Subset 
+    
     if subset == 'Lille':
         df = df[Lille_var+['Prednisolone',f'D{death}_DTH']]
         
@@ -70,11 +78,47 @@ def dataset(subset,death,treatment,split,size,missing):
     elif treatment == 99:
         df = df
         
-    if missing == 'cc':
-        df = df.dropna()
-    else:
-        df =df
+    ### MISSING VALUE MANAGEMENT 
     
+    #No missing value management
+    if missing == 'none':
+        df =df
+    #
+    # Complete-cases
+    #
+    elif missing == 'cc':
+        df = df.dropna() 
+    #
+    # Inverse-probability-weighting
+    elif missing == 'ipw':
+        if subset == 'full':
+            s = ['Hepatic.Encephalopathy...Merged','Hepatic.Encephalopathy...Treatment.Day.7..']
+            df[s] = df[s].astype('Int64')
+            imp = SimpleImputer(strategy="most_frequent")
+            for x in s:
+                df[x] = imp.fit_transform(df[x].values.reshape(-1, 1))
+                df[x] = df[x].astype('Int64')
+        if subset == 'baseline':
+            s = 'Hepatic.Encephalopathy...Merged'
+            df[s] = df[s].astype('Int64') 
+            imp = SimpleImputer(strategy="most_frequent")
+            df[s] = imp.fit_transform(df[s].values.reshape(-1, 1))
+            df[s] = df[s].astype('Int64')
+        elif subset == '7day':
+            s = 'Hepatic.Encephalopathy...Treatment.Day.7..'
+            df[s] = df[s].astype('Int64') 
+            imp = SimpleImputer(strategy="most_frequent")
+            df[s] = imp.fit_transform(df[s].values.reshape(-1, 1))
+            df[s] = df[s].astype('Int64')
+      
+        probs = list(1 -(df.isnull().sum().values / len(df)))
+        df = df.div(probs, axis=1)
+        df =  df.dropna()
+
+    elif missing == 'none':
+        df =df 
+        
+        
     df.reset_index(drop=True, inplace=True)
         
     X, y = df.drop(f'D{death}_DTH', axis=1), df[[f'D{death}_DTH']]
