@@ -3,18 +3,20 @@ import numpy as np
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 
+#MICE
 from sklearn.impute import SimpleImputer
-
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
 
 
 def dataset(subset,death,treatment,split,size,missing): 
-    #-df: Pandas data fame
+    #
     #-subset: String, determines subset 'Lille','7day','Baseline','Paper'
     #-death: Integer, 30 days or 90 days
     #-treatment: Integer, 1 if treated and else 0
-    #-split: String, determines split 'train-test','mixed'
+    #-split: String, determines split 'train-test','mixed','cv'
     #-testsize: Float, Size of test set 
-    #-missing: String, provides missingness mechanism
+    #-missing: String, provides missingness mechanism: 'none','cc','ipw','mice'
     #
     #Read data
     df = pd.read_csv('/Users/lilimatic/stopah.csv')
@@ -23,6 +25,7 @@ def dataset(subset,death,treatment,split,size,missing):
 
     df['Hepatic.Encephalopathy...Merged'] = df['Hepatic.Encephalopathy...Merged'].astype('Int64')
 
+    
     #Treat values as NA
     for x in df.columns:
         if len(df[df[x] == -2147483648].index) >0:
@@ -80,19 +83,19 @@ def dataset(subset,death,treatment,split,size,missing):
         
     ### MISSING VALUE MANAGEMENT 
     
-    #No missing value management
+    #No missing value management for tree based models 
     if missing == 'none':
         df =df
     #
-    # Complete-cases
+    # Complete-Case analysis 
     #
     elif missing == 'cc':
         df = df.dropna() 
     #
-    # Inverse-probability-weighting
-    elif missing == 'ipw':
+    # Inverse-probability-weighting in complete-cases
+    elif (missing == 'ipw' or missing == 'mice'):
         if subset == 'full':
-            s = ['Hepatic.Encephalopathy...Merged','Hepatic.Encephalopathy...Treatment.Day.7..']
+            s = ['Hepatic.Encephalopathy...Merged','Hepatic.Encephalopathy...Treatment.Day.7..','Gastrointestinal.Bleed.since.the.last.visit.Gastrointestinal.bleed...and.Choose..Treatment.Day.7..']
             df[s] = df[s].astype('Int64')
             imp = SimpleImputer(strategy="most_frequent")
             for x in s:
@@ -105,15 +108,27 @@ def dataset(subset,death,treatment,split,size,missing):
             df[s] = imp.fit_transform(df[s].values.reshape(-1, 1))
             df[s] = df[s].astype('Int64')
         elif subset == '7day':
-            s = 'Hepatic.Encephalopathy...Treatment.Day.7..'
-            df[s] = df[s].astype('Int64') 
-            imp = SimpleImputer(strategy="most_frequent")
-            df[s] = imp.fit_transform(df[s].values.reshape(-1, 1))
+            s = ['Gastrointestinal.Bleed.since.the.last.visit.Gastrointestinal.bleed...and.Choose..Treatment.Day.7..','Hepatic.Encephalopathy...Treatment.Day.7..']
             df[s] = df[s].astype('Int64')
-      
-        probs = list(1 -(df.isnull().sum().values / len(df)))
-        df = df.div(probs, axis=1)
-        df =  df.dropna()
+            imp = SimpleImputer(strategy="most_frequent")
+            for x in s:
+                df[x] = imp.fit_transform(df[x].values.reshape(-1, 1))
+                df[x] = df[x].astype('Int64')
+        #
+        #IPW
+        #
+        if missing == 'ipw':
+            probs = list(1 -(df.isnull().sum().values / len(df)))
+            df = df.div(probs, axis=1)
+            df =  df.dropna()
+        #
+        #MICE
+        #
+        elif missing == 'mice':
+            mice = IterativeImputer(max_iter=10, random_state=0)
+            df = pd.DataFrame(mice.fit_transform(df), columns=df.columns)
+            cat_var = [x for x in df if (df[x].dtypes  == 'Int64' or df[x].dtypes  == 'int64') ]
+            df[cat_var] = df[cat_var].astype('Int64')
 
     elif missing == 'none':
         df =df 
@@ -142,7 +157,9 @@ def dataset(subset,death,treatment,split,size,missing):
         X_test = test.drop([f'D{death}_DTH'],axis=1)
         y_test = test[f'D{death}_DTH']
     
-    return df, X, y, X_train, X_test, y_train, y_test
-    
+    if split != 'cv':
+        return df, X, y, X_train, X_test, y_train, y_test
+    else: 
+        return df, X, y, X, X, y, y
     
 
