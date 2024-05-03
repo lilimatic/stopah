@@ -14,7 +14,7 @@ def dataset(subset,death,treatment,split,size,missing):
     #-subset: String, determines subset 'Lille','7day','Baseline','Paper'
     #-death: Integer, 30 days or 90 days
     #-treatment: Integer, 1 if treated and else 0
-    #-split: String, determines split 'train-test','mixed','cv'
+    #-split: String, determines split 'train-test','mix-1','mix-2','cv'
     #-testsize: Float, Size of test set 
     #-missing: String, provides missingness mechanism: 'none','cc','ipw','mice'
     #
@@ -90,7 +90,23 @@ def dataset(subset,death,treatment,split,size,missing):
     # Complete-Case analysis 
     #
     elif missing == 'cc':
+        # Complete-case analysis
+        # 
         df = df.dropna() 
+        #
+        # HOT-ONE encoding 
+        #
+        cat_var = [x for x in df.columns if df[x].dtype != 'float64']
+        df[cat_var] = df[cat_var].astype('Int64')
+        #
+        #Add hot-one encoded categories 
+        #
+        for cat in cat_var:
+            if cat != ('D28_DTH' or 'D90_DTH'):
+                new = cat + '_2'
+                df[new] = df[cat].apply(lambda x: 1 if x== 0 else 0 )
+                df[new] = df[new].astype('Int64')
+        
     #
     # Inverse-probability-weighting in complete-cases
     elif (missing == 'ipw' or missing == 'mice'):
@@ -118,9 +134,23 @@ def dataset(subset,death,treatment,split,size,missing):
         #IPW
         #
         if missing == 'ipw':
+            #cat_var = [x for x in df.co if (df[x].dtypes  == 'Int64' or df[x].dtypes  == 'int64') ]
+            cat_var = [x for x in df.columns if df[x].dtype != 'float64']
+            df[cat_var] = df[cat_var].astype('Int64')
+            #Add hot-one encoded categories 
+            for cat in cat_var:
+                if cat != ('D28_DTH' or 'D90_DTH'):
+                    new = cat + '_2'
+                    df[new] = df[cat].apply(lambda x: 1 if x== 0 else 0 )
+                    df[new] = df[new].astype('Int64')
+            #
+            #Inverse-Probabilty-Weighting
+            #
             probs = list(1 -(df.isnull().sum().values / len(df)))
             df = df.div(probs, axis=1)
             df =  df.dropna()
+            df = df.astype('float64')
+            
         #
         #MICE
         #
@@ -144,8 +174,8 @@ def dataset(subset,death,treatment,split,size,missing):
     if split == 'train-test':
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=size, random_state=44)
         
-    
-    elif split == 'mixed':
+    # MIX-1 train on non-treated test on treated
+    elif split == 'mix-1':
         train = df.loc[df['Prednisolone']==0].drop(['Prednisolone'], axis=1)
         test= df.loc[df['Prednisolone']==1].drop(['Prednisolone'], axis=1)
         train.reset_index()
@@ -156,6 +186,20 @@ def dataset(subset,death,treatment,split,size,missing):
 
         X_test = test.drop([f'D{death}_DTH'],axis=1)
         y_test = test[f'D{death}_DTH']
+        
+    # MIX-2 train on non-treated test on treated
+    elif split == 'mix-2':
+        train = df.loc[df['Prednisolone']==1].drop(['Prednisolone'], axis=1)
+        test= df.loc[df['Prednisolone']==0].drop(['Prednisolone'], axis=1)
+        train.reset_index()
+        test.reset_index()
+
+        X_train = train.drop([f'D{death}_DTH'],axis=1)
+        y_train = train[f'D{death}_DTH']
+
+        X_test = test.drop([f'D{death}_DTH'],axis=1)
+        y_test = test[f'D{death}_DTH']
+    
     
     if split != 'cv':
         return df, X, y, X_train, X_test, y_train, y_test
