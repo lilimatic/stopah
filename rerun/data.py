@@ -155,10 +155,19 @@ def dataset(subset,death,treatment,split,size,missing):
         #MICE
         #
         elif missing == 'mice':
+            #cat_var = [x for x in df if (df[x].dtypes  == 'Int64' or df[x].dtypes  == 'int64') ]
+            cat_var = [x for x in df.columns if df[x].dtype != 'float64']
             mice = IterativeImputer(max_iter=10, random_state=0)
             df = pd.DataFrame(mice.fit_transform(df), columns=df.columns)
-            cat_var = [x for x in df if (df[x].dtypes  == 'Int64' or df[x].dtypes  == 'int64') ]
+            #cat_var = [x for x in df.columns if df[x].dtype != 'float64']
             df[cat_var] = df[cat_var].astype('Int64')
+            #
+            # Hot-one-encoding
+            for cat in cat_var:
+                if cat != ('D28_DTH' or 'D90_DTH'):
+                    new = cat + '_2'
+                    df[new] = df[cat].apply(lambda x: 1 if x== 0 else 0 )
+                    df[new] = df[new].astype('Int64')
 
     elif missing == 'none':
         df =df 
